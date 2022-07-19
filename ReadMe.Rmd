@@ -1,0 +1,151 @@
+---
+title: "Protrusion Package and Example"
+author: "Jaewon Huh"
+date: "2022/07/06"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+#Loading the workspace
+load("my_work_space.RData")
+```
+
+## Introduction
+
+This documentation describes the usage of the protrusion/retraction package described in the following github account [Jaewon Huh](https://github.com/hergee3169/Protrusion-Retraction-Database-setup). We describe a step by step process from raw data to final analysis result used in the publication.
+
+### Reference
+The package has been used for the below publications and more coming. Here, we will be focusing primarily on the first paper for example. 
+
+* [A versatile oblique plane microscope for large-scale and high-resolution imaging of subcellular dynamics. Elife. (2020)](https://elifesciences.org/articles/57681.pdf))
+* [Actin-membrane release initiates cell protrusions. Developmental Cell. (2020)](https://www.sciencedirect.com/science/article/pii/S1534580720309333)
+* [Multiplexed GTPase and GEF biosensor imaging enables network connectivity analysis. Nature Chemical Biology. (2020)](https://www.nature.com/articles/s41589-020-0542-9)
+
+## Raw Velocity Data
+
+The data set is as below where Ch0 describes the edge velocity measured in nm/s. cellIndex stands for the cell and windowIndex indicates the location of the measurement in cell. frameIndex is the time point for this data and Label stands for the experimental conditions. 
+
+```{r, echo = T}
+head(Velocity.df)
+```
+
+The raw velocity data is produced for 2 groups of cells each consisted with 6, 7 where one group is reactive to photoactivation and the other isn't. This photoactivation is an exposure of light to a cell region where it instataneously activate molecular signals which for our case is Rac1-GTPase. We expose the photoactivation to both groups and measure the before/after response on cell motility by measuring the protrusion features. Each cells were exposed to photoactivation for 90 frames where one frame is measured every 5 seconds. Below describe the experimental condition labels.
+
+```{r, echo = T}
+unique(Velocity.df$Label)
+```
+
+## Cellwise edge velocity map
+
+Below is a visualization of the edge velocity map for an example cell. The Y-axis indicate the position on the edge of a cell and X-axis indicate the time. The colors are speed in nm/s where red shows positive velocity where cell is moving out known as protrusion and blue negative velocity signal indicate retraction of cell at that region and time.
+
+```{r, echo = T}
+library(dplyr)
+library(ggplot2)
+# Color generation
+jet.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+# Plot codes
+heat.Ch0 <- ggplot(data = Velocity.df %>% filter(Label == "Control_Rac1_Before" & cellIndex == 3),
+                   aes(x = frameIndex, y = windowIndex)) + 
+  geom_tile(aes(fill = Ch0)) +
+  theme(panel.background = element_blank(), text = element_text(size = 25)) +
+  labs(x = "frameIndex", y = "Window", fill = paste0("") , title = "Edge Velocity") +
+  guides(fill = guide_colourbar(barwidth = 2, barheight = 15, label = T, nbin = 100)) +
+  scale_fill_gradientn(colours = jet.colors(9))
+print(heat.Ch0)
+```
+
+## Hidden Markov States to Protrusion events
+We use the DepmixS4 R package to discover underlying velocity states for our raw data. The purpose is to get positive velocity states and pool them as a protrusion event for our analysis. The detailed description can be seen in the supplementary documents of the published papers. 
+
+Below are the computed 8 state map of the edge velocity data. We can see the states are well organized based on the average edge velocity and it catches the underlying information well. If we apply a binary filter on positive velocity states, we can compute protrusion events as the right figure.
+
+```{r, echo = T}
+library(cowplot)
+library(gridExtra)
+# Plot codes
+State.Ch0 <- ggplot(data = State.df %>% filter(Label == "Control_Rac1_Before" & cellIndex == 3),
+                   aes(x = frameIndex, y = windowIndex)) + 
+  geom_tile(aes(fill = Ch0.S8)) +
+  theme(panel.background = element_blank()) +
+  labs(x = "frameIndex", y = "Window", fill = paste0("") , title = "State") +
+  guides(fill = guide_colourbar(barwidth = 1, barheight = 10, label = F, nbin = 100)) +
+  scale_fill_gradientn(colours = jet.colors(9))
+
+Binary.Ch0 <- ggplot(data = State.df %>% filter(Label == "Control_Rac1_Before" & cellIndex == 3),
+                   aes(x = frameIndex, y = windowIndex)) + 
+  geom_tile(aes(fill = 1 * (Ch0.S8>4))) +
+  theme(panel.background = element_blank()) +
+  labs(x = "frameIndex", y = "Window", fill = paste0("") , title = "Binary") +
+  guides(fill = guide_colourbar(barwidth = 1, barheight = 10, label = F, nbin = 2))
+plot_grid(State.Ch0, Binary.Ch0)
+```
+
+## Protrusion Database
+The protrusion database is extracted from the binary states and transformed into a data base as below. We can then impose manual filters based on the previous knowledge of the data. This data set is filtered with average speed over 2nm/s and protrusion Duration at least 3 time frames to ensure the protrusion events we have captured resemble reality. The windowIndex can be used as location indicator per cell and we use windows exposed to photo activation to check the difference in protrusions with/without photo activation.
+
+```{r, echo = T}
+head(Before_protrusion.df)
+```
+
+## Photo Activation indicator
+We have the photo activation indicator dataset where 1 is if the window was affected by photoactivation during the exposure.
+
+```{r, echo = T}
+head(PA_Info)
+```
+
+The proportion of windows affected by photo activation can be calculated as below.
+
+```{r, echo = T}
+PA_Info %>% group_by(Label, cellIndex, PA_window) %>% summarise(number = n()) %>% mutate(proportion = number/sum(number)) %>% filter(PA_window == 1)
+```
+
+## Convert PA Info into protrusion data
+We can convert the PA info into the protrusion database and compute before/after photoactivation for Control/Mutant data.
+
+```{r, echo = T}
+head(ProtrusionSummaryData)
+```
+
+Now we compute the effect of photo activation on the protrusion features per cell.
+```{r, echo = T}
+library(ggpubr)
+p1 <- ggplot(data = ProtrusionSummaryData %>% filter(Label == "Mutant" & PA_window == 1),
+             aes(x = factor(Timing), y = Speed, group = factor(Timing))) + geom_boxplot() +
+  theme(legend.position='none') + stat_compare_means(paired = T) +
+  labs(x = "PA", y = "Speed(nm/s)")
+
+p2 <- ggplot(data = ProtrusionSummaryData %>% filter(Label == "Mutant" & PA_window == 1),
+             aes(x = factor(Timing), y = Duration, group = factor(Timing))) + geom_boxplot() +
+  theme(legend.position='none') + stat_compare_means(paired = T) +
+  labs(x = "PA", y = "Duration(s)")
+
+p3 <- ggplot(data = ProtrusionSummaryData %>% filter(Label == "Mutant" & PA_window == 1),
+             aes(x = factor(Timing), y = Frequency, group = factor(Timing))) + geom_boxplot() +
+  theme(legend.position='none') + stat_compare_means(paired = T) +
+  labs(x = "PA", y = "Frequency")
+plot_grid(p1, p2, p3)
+```
+
+## Paper result
+
+![Figure 7](elife-57681-fig7-v5.jpg)
+
+Simultaneous subcellular optogenetic stimulation of PA-Rac1 and volumetric imaging of morphodynamic changes in MEF cells.
+(A) Cell before optogenetic stimulation. (B) Localized optical stimulation of PA-Rac1 (within the blue box) was performed with a 488 nm laser operating in a laser-scanned illumination geometry synchronously with volumetric imaging using a 561 nm laser. Scale Bar: 10 microns. (C) Lateral maximum intensity projection of the cell during optical stimulation shows the dorsal ruffles moving from the cell periphery to the juxtanuclear cellular region. Scale Bar: 20 microns. (D) Orthogonal maximum intensity projection along the dotted line in (C) of dorsal ruffles. Scale Bar: 10 microns. (E) Hidden Markov model analysis gives the log-ratio difference between pre activation and activation response showing control cells (N = 6) with no difference in protrusion duration, speed, or frequency while cells expressing PA-Rac1 (N = 7) show statistically significant increases in protrusion speed (p=0.04) and duration (p=0.02) with no significant changes in frequency. All image data shown are raw. For detailed info check below.
+
+* [A versatile oblique plane microscope for large-scale and high-resolution imaging of subcellular dynamics. Elife. (2020)](https://elifesciences.org/articles/57681.pdf)
+
+Comment: The example data set mentioned above are MDA MB 231 cells and the paper use MEF cells for PA Rac1 analysis.
+
+## Contact
+Jaewon Huh (Jaewon.Huh@utsouthwestern.edu), Qiongjing (Jenny) Zou (Qiongjing.Zou@utsouthwestern.edu)
+
+
+
+
+
+
+
