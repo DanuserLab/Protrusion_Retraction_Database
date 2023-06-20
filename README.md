@@ -259,3 +259,8 @@ Contact
 -------
 
 Jaewon Huh (<Jaewon.Huh@utsouthwestern.edu>), Qiongjing (Jenny) Zou (<Qiongjing.Zou@utsouthwestern.edu>)
+
+## Danuser Lab Links
+[Danuser Lab Website](https://www.danuserlab-utsw.org/)
+
+[Software Links](https://github.com/DanuserLab/)
