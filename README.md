@@ -12,9 +12,9 @@ This documentation describes the usage of the protrusion/retraction package desc
 
 The package has been used for the below publications and more coming. Here, we will be focusing primarily on the first paper for example.
 
--   [A versatile oblique plane microscope for large-scale and high-resolution imaging of subcellular dynamics. Elife. (2020)](https://elifesciences.org/articles/57681.pdf))
--   [Actin-membrane release initiates cell protrusions. Developmental Cell. (2020)](https://www.sciencedirect.com/science/article/pii/S1534580720309333)
--   [Multiplexed GTPase and GEF biosensor imaging enables network connectivity analysis. Nature Chemical Biology. (2020)](https://www.nature.com/articles/s41589-020-0542-9)
+-   [**A versatile oblique plane microscope for large-scale and high-resolution imaging of subcellular dynamics**](https://doi.org/10.7554/eLife.57681), *eLife*, 2020, 9:e57681, written by Etai Sapoznik, Bo-Jui Chang, Jaewon Huh, et al.
+-   [**Actin-Membrane Release Initiates Cell Protrusions**](https://doi.org/10.1016/j.devcel.2020.11.024), *Developmental Cell*, 2020, 55(6):723-736, written by Erik S. Welf, Christopher E. Miles, Jaewon Huh, et al.
+-   [**Multiplexed GTPase and GEF biosensor imaging enables network connectivity analysis**](https://doi.org/10.1038/s41589-020-0542-9), *Nat. Chem. Biol.*, 2020, 16, 826–833, written by Daniel J. Marston, Marco Vilela, Jaewon Huh, et al.
 
 Raw Velocity Data
 -----------------
